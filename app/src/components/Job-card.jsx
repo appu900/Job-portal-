@@ -1,9 +1,17 @@
 import { useUser } from "@clerk/clerk-react";
-import React from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { HeartIcon, MapIcon, MapPin, Trash2Icon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "./ui/button";
+import useFetch from "@/hooks/useFetch";
+import { saveJob } from "@/api/apijobs";
 
 export default function JobCard({
   job,
@@ -11,9 +19,36 @@ export default function JobCard({
   savedInit = false,
   onJobSaved = () => {},
 }) {
+  // ** fetching user from useUser hook : provided by clerk
   const { user } = useUser();
+
+  const [saved, setSaved] = useState(savedInit);
+
+  //   ** utilizing the useFetchHook..
+  const {
+    fn: fnSavedJob,
+    data: savedJob,
+    loading: loadingSavedJob,
+    error,
+  } = useFetch(saveJob, { alreadySaved: saved });
+
+  //   ** function for save and delete saved jobs
+  const handleSavedJobs = async () => {
+    await fnSavedJob({
+      user_id: user.id,
+      job_id: job.id,
+    });
+    onJobSaved();
+  };
+
+  useEffect(() => {
+    if (savedJob !== undefined) {
+      setSaved(savedJob?.length > 0);
+    }
+  }, [savedJob]);
+
   return (
-    <Card>
+    <Card className="">
       <CardHeader>
         <CardTitle className="flex justify-between font-bold">
           {job.title}
@@ -39,9 +74,24 @@ export default function JobCard({
       </CardContent>
       <CardFooter className="flex gap-2">
         <Link to={`/job/${job.id}`} className="flex-1">
-          <Button variant="secondary" className="w-full">View Details</Button>
+          <Button variant="secondary" className="w-full">
+            View Details
+          </Button>
         </Link>
-        <HeartIcon size={20} stroke="red" fill="red"/>
+        {!isMyJob && (
+          <Button
+            variant="outline"
+            className="w-15"
+            disabled={loadingSavedJob}
+            onClick={handleSavedJobs}
+          >
+            {saved ? (
+              <HeartIcon size={20} stroke="red" fill="red" />
+            ) : (
+              <HeartIcon size={20} />
+            )}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
